@@ -1,8 +1,8 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { APP_MODE, type AppMode } from "./config";
-import { demoBackend, getSupabase, supabaseBackend, type Backend } from "./store";
+import { APP_MODE, BASE_PATH, type AppMode } from "./config";
+import { getSupabase, localBackend, supabaseBackend, type Backend } from "./store";
 
 export interface AuthUser {
   id: string;
@@ -25,7 +25,8 @@ interface AuthValue {
 
 const AuthContext = createContext<AuthValue | null>(null);
 
-const DEMO_KEY = "vkr-demo:session";
+/** В режиме «local» пользователь один — тот, кто открыл сайт в этом браузере. */
+const LOCAL_USER: AuthUser = { id: "local", email: "" };
 
 /** Сообщения Supabase Auth на русском языке. */
 export function authError(message: string): string {
@@ -50,19 +51,12 @@ export function authError(message: string): string {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(APP_MODE !== "unconfigured");
+  const [user, setUser] = useState<AuthUser | null>(APP_MODE === "local" ? LOCAL_USER : null);
+  const [loading, setLoading] = useState(APP_MODE === "supabase");
   const [recovery, setRecovery] = useState(false);
 
   useEffect(() => {
-    if (APP_MODE === "unconfigured") return;
-    if (APP_MODE === "demo") {
-      Promise.resolve(localStorage.getItem(DEMO_KEY)).then((email) => {
-        setUser(email ? { id: "demo", email } : null);
-        setLoading(false);
-      });
-      return;
-    }
+    if (APP_MODE === "local") return;
     const sb = getSupabase();
     sb.auth.getSession().then(({ data }) => {
       const u = data.session?.user;
@@ -79,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const backend = useMemo<Backend | null>(() => {
     if (!user) return null;
-    return APP_MODE === "demo" ? demoBackend(user.id) : supabaseBackend(user.id);
+    return APP_MODE === "local" ? localBackend(user.id) : supabaseBackend(user.id);
   }, [user]);
 
   const value: AuthValue = {
@@ -89,46 +83,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     backend,
     recovery,
     async signIn(email, password) {
-      if (APP_MODE === "demo") {
-        localStorage.setItem(DEMO_KEY, email);
-        setUser({ id: "demo", email });
-        return null;
-      }
+      if (APP_MODE === "local") return null;
       const { error } = await getSupabase().auth.signInWithPassword({ email, password });
       return error ? authError(error.message) : null;
     },
     async signUp(email, password) {
-      if (APP_MODE === "demo") {
-        localStorage.setItem(DEMO_KEY, email);
-        setUser({ id: "demo", email });
-        return { error: null, needsConfirmation: false };
-      }
+      if (APP_MODE === "local") return { error: null, needsConfirmation: false };
       const { data, error } = await getSupabase().auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: `${window.location.origin}/dashboard` },
+        options: { emailRedirectTo: `${window.location.origin}${BASE_PATH}/dashboard/` },
       });
       if (error) return { error: authError(error.message), needsConfirmation: false };
       // Если подтверждение почты включено, сессии сразу нет.
       return { error: null, needsConfirmation: !data.session };
     },
     async signOut() {
-      if (APP_MODE === "demo") {
-        localStorage.removeItem(DEMO_KEY);
-        setUser(null);
-        return;
-      }
+      if (APP_MODE === "local") return;
       await getSupabase().auth.signOut();
     },
     async requestReset(email) {
-      if (APP_MODE === "demo") return "В демо-режиме пароль не используется.";
+      if (APP_MODE === "local") return "В этой версии пароль не используется.";
       const { error } = await getSupabase().auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset`,
+        redirectTo: `${window.location.origin}${BASE_PATH}/reset/`,
       });
       return error ? authError(error.message) : null;
     },
     async updatePassword(password) {
-      if (APP_MODE === "demo") return null;
+      if (APP_MODE === "local") return null;
       const { error } = await getSupabase().auth.updateUser({ password });
       if (!error) setRecovery(false);
       return error ? authError(error.message) : null;

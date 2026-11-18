@@ -6,7 +6,6 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth";
 import { ProfileProvider, useErrorMessages } from "@/lib/hooks";
 import { Button, Loading, cx } from "./ui";
-import { SetupNotice } from "./SetupNotice";
 
 export const NAV: { href: string; label: string }[] = [
   { href: "/dashboard", label: "Сроки" },
@@ -22,6 +21,11 @@ export const NAV: { href: string; label: string }[] = [
   { href: "/submission", label: "Сдача ВКР" },
   { href: "/defence", label: "Защита" },
 ];
+
+/** Раздел для версии, где данные хранятся в браузере. */
+const BACKUP_LINK = { href: "/backup", label: "Резервная копия" };
+
+const LOCAL_NOTE = "Данные хранятся только в этом браузере и никуда не отправляются. Время от времени скачивайте резервную копию.";
 
 function Errors() {
   const { messages, dismiss } = useErrorMessages();
@@ -50,22 +54,17 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
-    if (!loading && !user && mode !== "unconfigured") router.replace("/login");
-  }, [loading, user, mode, router]);
+    if (!loading && !user) router.replace("/login");
+  }, [loading, user, router]);
 
-  if (mode === "unconfigured") {
-    return (
-      <main className="mx-auto max-w-2xl px-4 py-10">
-        <SetupNotice />
-      </main>
-    );
-  }
+  const local = mode === "local";
+  const links = local ? [...NAV, BACKUP_LINK] : NAV;
   if (loading || !user) return <Loading />;
 
   const nav = (
     <nav aria-label="Разделы" className="flex flex-col gap-0.5">
-      {NAV.map((item) => {
-        const active = pathname === item.href;
+      {links.map((item) => {
+        const active = pathname === item.href || pathname === `${item.href}/`;
         return (
           <Link
             key={item.href}
@@ -99,12 +98,16 @@ export function AppShell({ children }: { children: ReactNode }) {
         {menuOpen && (
           <div id="mobile-nav" className="border-b border-line bg-white px-3 py-3 lg:hidden">
             {nav}
-            <div className="mt-3 flex items-center justify-between gap-2 border-t border-line pt-3 text-sm text-slate-600">
-              <span className="truncate">{user.email}</span>
-              <Button small onClick={signOut}>
-                Выйти
-              </Button>
-            </div>
+            {local ? (
+              <p className="mt-3 border-t border-line pt-3 text-[13px] leading-snug text-slate-600">{LOCAL_NOTE}</p>
+            ) : (
+              <div className="mt-3 flex items-center justify-between gap-2 border-t border-line pt-3 text-sm text-slate-600">
+                <span className="truncate">{user.email}</span>
+                <Button small onClick={signOut}>
+                  Выйти
+                </Button>
+              </div>
+            )}
           </div>
         )}
 
@@ -116,17 +119,18 @@ export function AppShell({ children }: { children: ReactNode }) {
           <p className="mb-4 px-3 text-[13px] leading-snug text-slate-500">ВШБ МГУ · Программа ГИА 2026-2027</p>
           {nav}
           <div className="mt-auto px-3 pt-6 text-sm text-slate-600">
-            {mode === "demo" && (
-              <p className="mb-2 rounded-lg bg-amber-100 px-2 py-1.5 text-[13px] text-amber-950">
-                Демо-режим: данные хранятся только в этом браузере.
-              </p>
+            {local ? (
+              <p className="rounded-lg bg-brand-50 px-2.5 py-2 text-[13px] leading-snug text-brand-900">{LOCAL_NOTE}</p>
+            ) : (
+              <>
+                <p className="truncate" title={user.email}>
+                  {user.email}
+                </p>
+                <Button small className="mt-2" onClick={signOut}>
+                  Выйти
+                </Button>
+              </>
             )}
-            <p className="truncate" title={user.email}>
-              {user.email}
-            </p>
-            <Button small className="mt-2" onClick={signOut}>
-              Выйти
-            </Button>
           </div>
         </aside>
 

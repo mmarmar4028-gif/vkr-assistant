@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth";
 import { Button, Field, Input, Notice } from "./ui";
-import { SetupNotice } from "./SetupNotice";
 
 function Frame({ title, children, footer }: { title: string; children: ReactNode; footer?: ReactNode }) {
   return (
@@ -26,7 +25,7 @@ function Frame({ title, children, footer }: { title: string; children: ReactNode
 const link = "font-medium text-brand-700 underline underline-offset-2 hover:text-brand-900";
 
 export function AuthForm({ kind }: { kind: "login" | "register" }) {
-  const { mode, user, loading, signIn, signUp } = useAuth();
+  const { user, loading, signIn, signUp } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -38,14 +37,6 @@ export function AuthForm({ kind }: { kind: "login" | "register" }) {
   useEffect(() => {
     if (!loading && user) router.replace("/dashboard");
   }, [loading, user, router]);
-
-  if (mode === "unconfigured") {
-    return (
-      <main className="mx-auto max-w-2xl px-4 py-10">
-        <SetupNotice />
-      </main>
-    );
-  }
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -107,11 +98,6 @@ export function AuthForm({ kind }: { kind: "login" | "register" }) {
       }
     >
       <form onSubmit={submit} className="space-y-4" noValidate={false}>
-        {mode === "demo" && (
-          <Notice kind="warn">
-            Демо-режим: база данных не подключена. Введите любую почту — данные сохранятся только в этом браузере.
-          </Notice>
-        )}
         <Field label="Электронная почта" required>
           <Input
             type="email"
@@ -123,7 +109,7 @@ export function AuthForm({ kind }: { kind: "login" | "register" }) {
             placeholder="name@example.com"
           />
         </Field>
-        {mode !== "demo" && (
+        {(
           <Field label="Пароль" required hint={isLogin ? undefined : "Не короче 8 символов."}>
             <Input
               type="password"
@@ -135,7 +121,7 @@ export function AuthForm({ kind }: { kind: "login" | "register" }) {
             />
           </Field>
         )}
-        {!isLogin && mode !== "demo" && (
+        {!isLogin && (
           <Field label="Пароль ещё раз" required>
             <Input
               type="password"
@@ -151,7 +137,7 @@ export function AuthForm({ kind }: { kind: "login" | "register" }) {
         <Button type="submit" variant="primary" className="w-full" disabled={busy}>
           {busy ? "Подождите…" : isLogin ? "Войти" : "Создать аккаунт"}
         </Button>
-        {isLogin && mode !== "demo" && (
+        {isLogin && (
           <p className="text-center text-sm">
             <Link className={link} href="/reset">
               Забыли пароль?
@@ -171,13 +157,11 @@ export function ResetForm() {
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
-  if (mode === "unconfigured") {
-    return (
-      <main className="mx-auto max-w-2xl px-4 py-10">
-        <SetupNotice />
-      </main>
-    );
-  }
+  // В версии без сервера паролей нет — сразу открываем приложение.
+  useEffect(() => {
+    if (mode === "local") router.replace("/dashboard");
+  }, [mode, router]);
+  if (mode === "local") return null;
 
   // Пользователь пришёл по ссылке из письма: задаёт новый пароль.
   if (recovery && user) {

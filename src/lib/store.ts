@@ -68,9 +68,15 @@ export function supabaseBackend(userId: string): Backend {
   };
 }
 
-/** Демо-хранилище: данные лежат в localStorage этого браузера. */
-export function demoBackend(userId: string): Backend {
-  const key = (table: string) => `vkr-demo:${table}`;
+/**
+ * Префикс ключей localStorage. На github.io один адрес (origin) делят все сайты
+ * владельца, поэтому префикс должен быть уникальным для этого приложения.
+ */
+export const LOCAL_PREFIX = "vkr-assistant:";
+
+/** Хранилище в браузере: данные лежат в localStorage и никуда не отправляются. */
+export function localBackend(userId: string): Backend {
+  const key = (table: string) => `${LOCAL_PREFIX}${table}`;
   const read = (table: string): Row[] => {
     try {
       return JSON.parse(localStorage.getItem(key(table)) ?? "[]");
