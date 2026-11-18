@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-golos), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Times New Roman", Times, serif;
+
+  /* Основной цвет интерфейса — тёмно-синий */
+  --color-brand-50: #eef4fb;
+  --color-brand-100: #d9e6f5;
+  --color-brand-200: #b5cdea;
+  --color-brand-300: #86abd9;
+  --color-brand-400: #5685c3;
+  --color-brand-500: #3667a8;
+  --color-brand-600: #27508a;
+  --color-brand-700: #1f406f;
+  --color-brand-800: #1a3459;
+  --color-brand-900: #142744;
+
+  --color-paper: #f6f5f1;
+  --color-ink: #1c2330;
+  --color-line: #e2dfd6;
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+/* Поля ввода: единый вид */
+.field {
+  @apply w-full rounded-lg border border-line bg-white px-3 py-2 text-[15px] text-ink shadow-xs outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-3 focus:ring-brand-100 disabled:bg-slate-50 disabled:text-slate-500;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--color-brand-600);
+}
+
+/* Текст, который переносится в Word: как в документе */
+.docline {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
+}
+.field:focus-visible {
+  outline: none;
+}
